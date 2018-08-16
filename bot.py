@@ -38,11 +38,12 @@ for submission in r.subreddit('nomansskythegame').hot(limit=1000):
 		if(number_of_rows != 0):
 			db.execute('UPDATE submissions SET hot = 0 WHERE name = ?',(str(submission.name),))
 			continue
+		has_crossposts = submission.num_crossposts != 0
 		new_submission = submission.crosspost(subreddit="NMS_Discussions", send_replies=False)
 		db.execute('INSERT INTO submissions(name,title,hot) VALUES (?,?,1)', (str(submission.name),str(submission.title)))
 		new_submission.mod.lock()
 		new_submission.mod.flair(text=get_flair_text(submission))
-		if(not hasattr(submission,'post_hint') and submission.num_crossposts == 0):
+		if(not hasattr(submission,'post_hint') and not has_crossposts):
 			new_submission.mod.approve()
 		print('NEW: ' + str(submission.title))
 
