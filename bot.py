@@ -3,7 +3,7 @@ from pprint import pprint
 import sqlite3
 
 def is_good_submission(submission):
-	if(submission.score < 5 or submission.num_comments < 5):
+	if(submission.num_comments < 5):
 		return False
 
 	if (hasattr(submission,'link_flair_text') 
