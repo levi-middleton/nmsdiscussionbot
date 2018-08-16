@@ -22,22 +22,22 @@ db = conn.cursor()
 r = praw.Reddit('bot1')
 print(r.user.me())	
 
-db.execute('UPDATE submissions SET hot = 0')
+db.execute('UPDATE submissions SET hot = hot + 1')
 for submission in r.subreddit('nomansskythegame').hot(limit=1000):
 	if is_good_submission(submission):
 		db.execute('SELECT COUNT(*) FROM submissions WHERE name = ?',(str(submission.name),))
 		(number_of_rows,) = db.fetchone()
 		if(number_of_rows != 0):
-			db.execute('UPDATE submissions SET hot = 1 WHERE name = ?',(str(submission.name),))
+			db.execute('UPDATE submissions SET hot = 0 WHERE name = ?',(str(submission.name),))
 			continue
 		new_submission = submission.crosspost(subreddit="NMS_Discussions", send_replies=False)
 		db.execute('INSERT INTO submissions(name,title,hot) VALUES (?,?,1)', (str(submission.name),str(submission.title)))
 		new_submission.mod.lock()
-		if(not hasattr(submission,'post_hint')):
+		if(not hasattr(submission,'post_hint') and submission.num_crossposts == 0):
 			new_submission.mod.approve()
 		print('NEW: ' + str(submission.title))
 
-db.execute('DELETE FROM submissions WHERE hot = 0')
+db.execute('DELETE FROM submissions WHERE hot > 3')
 print('Deleted ' + str(db.rowcount) + ' rows.')
 conn.commit()
 conn.close()
