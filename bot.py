@@ -7,14 +7,22 @@ def is_good_submission(submission):
 		return False
 
 	if (hasattr(submission,'link_flair_text') 
-		and (('Information' in str(submission.link_flair_text)) 
-			or ('Discussion' in str(submission.link_flair_text)))):
+		and (('Information' in str(submission.link_flair_text).title()) 
+			or ('Discussion' in str(submission.link_flair_text).title()))):
 		return True
 
 	if(submission.is_self):
 		return True
 
 	return False
+
+def get_flair_text(submission):
+	if hasattr(submission,'link_flair_text'):
+		if('Discussion' in str(submission.link_flair_text).title()):
+			return 'Discussion'
+		if('Suggestion' in str(submission.link_flair_text).title()):
+			return 'Suggestion'
+	return 'Information'
 
 conn = sqlite3.connect('db.sqlite')
 conn.execute('CREATE TABLE IF NOT EXISTS submissions (name text NOT NULL UNIQUE, title text NOT NULL, hot integer NOT NULL)')
@@ -33,6 +41,7 @@ for submission in r.subreddit('nomansskythegame').hot(limit=1000):
 		new_submission = submission.crosspost(subreddit="NMS_Discussions", send_replies=False)
 		db.execute('INSERT INTO submissions(name,title,hot) VALUES (?,?,1)', (str(submission.name),str(submission.title)))
 		new_submission.mod.lock()
+		new_submission.mod.flair(text=get_flair_text(submission))
 		if(not hasattr(submission,'post_hint') and submission.num_crossposts == 0):
 			new_submission.mod.approve()
 		print('NEW: ' + str(submission.title))
