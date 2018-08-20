@@ -48,10 +48,17 @@ def crosspost_good_submissions(r, db):
 	db.execute('DELETE FROM submissions WHERE hot = 0')
 	logging.info('Deleted ' + str(db.rowcount) + ' rows from crosspost cache.')
 
+class objectview(object):
+    def __init__(self, d):
+        self.__dict__ = d
+
 def check_unmoderated_items(r):
-	for submission in r.subreddit('NMS_Discussions').mod.unmoderated():
+	for crosspost_submission in r.subreddit('NMS_Discussions').mod.unmoderated():
+		if(not hasattr(crosspost_submission,'crosspost_parent_list')):
+			continue
+		submission = objectview(crosspost_submission.crosspost_parent_list[0])
 		if(submission.score >= 5):
-			submission.mod.approve()
+			crosspost_submission.mod.approve()
 
 def init_database():
 	conn = sqlite3.connect('db.sqlite')
@@ -78,6 +85,7 @@ def main():
 		r = praw.Reddit('bot1')
 		logging.info("Running bot with user " + str(r.user.me()))	
 		crosspost_good_submissions(r, db)
+		check_unmoderated_items(r)
 		conn.commit()
 		conn.close()
 	except:
