@@ -3,7 +3,7 @@ from pprint import pprint
 import sqlite3
 
 def is_good_submission(submission):
-	if(submission.num_comments < 5):
+	if(submission.num_comments < 15):
 		return False
 
 	if (hasattr(submission,'link_flair_text') 
@@ -43,7 +43,7 @@ for submission in r.subreddit('nomansskythegame').hot(limit=1000):
 		db.execute('INSERT INTO submissions(name,title,hot) VALUES (?,?,1)', (str(submission.name),str(submission.title)))
 		new_submission.mod.lock()
 		new_submission.mod.flair(text=get_flair_text(submission))
-		if(not hasattr(submission,'post_hint') and not has_crossposts):
+		if(not hasattr(submission,'post_hint') and not has_crossposts and submission.score > 5):
 			new_submission.mod.approve()
 		print('NEW: ' + str(submission.title))
 
