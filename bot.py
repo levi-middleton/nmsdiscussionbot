@@ -6,6 +6,21 @@ import json
 import os
 import datetime
 
+def init_database():
+	conn = sqlite3.connect('db.sqlite')
+	conn.execute('CREATE TABLE IF NOT EXISTS migrations (filename TEXT PRIMARY KEY, run_date TEXT NOT NULL)')
+	db = conn.cursor()
+	for filename in sorted(os.listdir('migrations'),key=lambda f: int(''.join(filter(str.isdigit, f)))):
+		db.execute('SELECT COUNT(*) FROM migrations where filename = ?',(filename,))
+		(number_of_rows,) = db.fetchone()
+		if(number_of_rows != 0):
+			continue
+		logging.info('Running migration ' + filename)
+		with open(os.path.join('migrations',filename)) as f:
+			conn.execute(f.read())
+		conn.execute('INSERT INTO migrations (filename, run_date) VALUES (?,?)',(filename, str(datetime.datetime.now())))
+	return conn
+
 def is_good_submission(submission):
 	if(submission.num_comments < 15):
 		return False
@@ -30,6 +45,7 @@ def get_flair_text(submission):
 
 def crosspost_good_submissions(r, db):
 	db.execute('UPDATE submissions SET hot = 0')
+	crosspost_count = 0
 	for submission in r.subreddit('nomansskythegame').hot(limit=1000):
 		if is_good_submission(submission):
 			db.execute('SELECT COUNT(*) FROM submissions WHERE name = ?',(str(submission.name),))
@@ -44,7 +60,9 @@ def crosspost_good_submissions(r, db):
 			new_submission.mod.flair(text=get_flair_text(submission))
 			if(not hasattr(submission,'post_hint') and not has_crossposts and submission.score > 5):
 				new_submission.mod.approve()
-			logging.info('Submitted new crosspost: ' + str(submission.title))
+			logging.debug('Submitted new crosspost: ' + str(submission.title))
+			crosspost_count += 1
+	logging.info('Added ' + str(crosspost_count) + ' new crossposts.')
 	db.execute('DELETE FROM submissions WHERE hot = 0')
 	logging.info('Deleted ' + str(db.rowcount) + ' rows from crosspost cache.')
 
@@ -57,24 +75,12 @@ def check_unmoderated_items(r):
 		if(not hasattr(crosspost_submission,'crosspost_parent_list')):
 			continue
 		submission = objectview(crosspost_submission.crosspost_parent_list[0])
-		if(submission.score >= 5):
+		if(is_good_submission(submission) and submission.score >= 5):
 			crosspost_submission.mod.approve()
 
-def init_database():
-	conn = sqlite3.connect('db.sqlite')
-	conn.execute('CREATE TABLE IF NOT EXISTS migrations (filename TEXT PRIMARY KEY, run_date TEXT NOT NULL)')
-	db = conn.cursor()
-	for filename in sorted(os.listdir('migrations'),key=lambda f: int(''.join(filter(str.isdigit, f)))):
-		db.execute('SELECT COUNT(*) FROM migrations where filename = ?',(filename,))
-		(number_of_rows,) = db.fetchone()
-		if(number_of_rows != 0):
-			continue
-		logging.info('Running migration ' + filename)
-		with open(os.path.join('migrations',filename)) as f:
-			conn.execute(f.read())
-		conn.execute('INSERT INTO migrations (filename, run_date) VALUES (?,?)',(filename, str(datetime.datetime.now())))
-	return conn
-
+def respond_to_inbox(r, db):
+	return
+	
 def main():
 	try:
 		with open('log.conf') as f:
