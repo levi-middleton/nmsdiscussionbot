@@ -11,6 +11,8 @@ def init_database():
 	conn.execute('CREATE TABLE IF NOT EXISTS migrations (filename TEXT PRIMARY KEY, run_date TEXT NOT NULL)')
 	db = conn.cursor()
 	for filename in sorted(os.listdir('migrations'),key=lambda f: int(''.join(filter(str.isdigit, f)))):
+		if(not filename.endswith('.sql')):
+			continue
 		db.execute('SELECT COUNT(*) FROM migrations where filename = ?',(filename,))
 		(number_of_rows,) = db.fetchone()
 		if(number_of_rows != 0):
