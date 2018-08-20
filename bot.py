@@ -35,6 +35,15 @@ def is_good_submission(submission):
 
 	return False
 
+def can_autoapprove_submission(submission):
+	if(not is_good_submission(submission)):
+		return False
+
+	if(hasattr(submission,'post_hint') or submission.score < 5):
+		return False
+
+	return True
+
 def get_flair_text(submission):
 	if hasattr(submission,'link_flair_text'):
 		if('Discussion' in str(submission.link_flair_text).title()):
@@ -58,7 +67,7 @@ def crosspost_good_submissions(r, db):
 			db.execute('INSERT INTO submissions(name,title,hot) VALUES (?,?,1)', (str(submission.name),str(submission.title)))
 			new_submission.mod.lock()
 			new_submission.mod.flair(text=get_flair_text(submission))
-			if(not hasattr(submission,'post_hint') and not has_crossposts and submission.score > 5):
+			if(can_autoapprove_submission(submission)):
 				new_submission.mod.approve()
 			logging.debug('Submitted new crosspost: ' + str(submission.title))
 			crosspost_count += 1
@@ -75,7 +84,7 @@ def check_unmoderated_items(r):
 		if(not hasattr(crosspost_submission,'crosspost_parent_list')):
 			continue
 		submission = objectview(crosspost_submission.crosspost_parent_list[0])
-		if(is_good_submission(submission) and submission.score >= 5):
+		if(can_autoapprove_submission(submission)):
 			crosspost_submission.mod.approve()
 
 def respond_to_inbox(r, db):
@@ -85,11 +94,11 @@ def main():
 	try:
 		with open('log.conf') as f:
 			logging.config.dictConfig(json.load(f))
-		logging.debug("Beginning script execution")
+		logging.info("Beginning script execution")
 		conn = init_database()
 		db = conn.cursor()
 		r = praw.Reddit('bot1')
-		logging.info("Running bot with user " + str(r.user.me()))	
+		logging.debug("Running bot with user " + str(r.user.me()))	
 		crosspost_good_submissions(r, db)
 		check_unmoderated_items(r)
 		conn.commit()
