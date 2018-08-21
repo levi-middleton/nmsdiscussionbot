@@ -19,7 +19,7 @@ def init_database():
 			continue
 		logging.info('Running migration ' + filename)
 		with open(os.path.join('migrations',filename)) as f:
-			conn.execute(f.read())
+			conn.executescript(f.read())
 		conn.execute('INSERT INTO migrations (filename, run_date) VALUES (?,?)',(filename, str(datetime.datetime.now())))
 	return conn
 
@@ -90,6 +90,8 @@ def check_unmoderated_items(r):
 			crosspost_submission.mod.approve()
 
 def respond_to_inbox(r, db):
+	for item in r.inbox.unread(limit=None):
+		continue
 	return
 	
 def main():
